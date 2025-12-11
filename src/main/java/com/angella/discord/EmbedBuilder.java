@@ -55,20 +55,44 @@ public class EmbedBuilder {
         boolean isNewPlayer = isNewPlayer(player);
         String playTime = getPlayerPlayTime(player);
         
+        // Check if player joined via launcher
+        boolean fromLauncher = isFromLauncher(player);
+        String launcherEmoji = "<:beta:1445916307034865798>";
+        
         String title = isNewPlayer ? "🎉 Новый игрок на сервере!" : "<:login:1445295617722024017> Игрок вернулся на сервер!";
-        String[] joinMessages = isNewPlayer ? new String[]{
-            "Присоединился к серверу! Добро пожаловать!",
-            "Зашел на сервер впервые! Приятной игры!",
-            "Появился на сервере! Удачи в приключениях!",
-            "Вошел в игру! Наслаждайся игрой!",
-            "Подключился! Приятного времяпрепровождения!"
-        } : new String[]{
-            "Вернулся на сервер! С возвращением!",
-            "Снова с нами! Приятной игры!",
-            "Подключился! Рады видеть тебя снова!",
-            "Зашел на сервер! Добро пожаловать обратно!",
-            "Вернулся! Удачи в приключениях!"
-        };
+        String[] joinMessages;
+        
+        if (fromLauncher) {
+            // Сообщения для игроков, зашедших через лаунчер
+            joinMessages = isNewPlayer ? new String[]{
+                "Присоединился к серверу! Используя Лаунчер! " + launcherEmoji,
+                "Зашел на сервер впервые! Используя Лаунчер! " + launcherEmoji,
+                "Появился на сервере! Используя Лаунчер! " + launcherEmoji,
+                "Вошел в игру! Используя Лаунчер! " + launcherEmoji,
+                "Подключился! Используя Лаунчер! " + launcherEmoji
+            } : new String[]{
+                "Вернулся на сервер! Используя Лаунчер! " + launcherEmoji,
+                "Снова с нами! Используя Лаунчер! " + launcherEmoji,
+                "Подключился! Используя Лаунчер! " + launcherEmoji,
+                "Зашел на сервер! Используя Лаунчер! " + launcherEmoji,
+                "Вернулся! Используя Лаунчер! " + launcherEmoji
+            };
+        } else {
+            // Обычные сообщения
+            joinMessages = isNewPlayer ? new String[]{
+                "Присоединился к серверу! Добро пожаловать!",
+                "Зашел на сервер впервые! Приятной игры!",
+                "Появился на сервере! Удачи в приключениях!",
+                "Вошел в игру! Наслаждайся игрой!",
+                "Подключился! Приятного времяпрепровождения!"
+            } : new String[]{
+                "Вернулся на сервер! С возвращением!",
+                "Снова с нами! Приятной игры!",
+                "Подключился! Рады видеть тебя снова!",
+                "Зашел на сервер! Добро пожаловать обратно!",
+                "Вернулся! Удачи в приключениях!"
+            };
+        }
         
         String messageText = joinMessages[(int)(Math.random() * joinMessages.length)];
         
@@ -126,6 +150,29 @@ public class EmbedBuilder {
             return playTimeTicks < 1200; // Less than 1 minute (20 ticks per second)
         } catch (Exception e) {
             // If we can't determine, assume returning player
+            return false;
+        }
+    }
+    
+    /**
+     * Проверяет, зашел ли игрок через лаунчер
+     * Используем серверный мод launcherapi для проверки
+     */
+    private static boolean isFromLauncher(ServerPlayerEntity player) {
+        try {
+            // Используем серверный мод launcherapi для проверки
+            // Если мод установлен, используем его API
+            Class<?> playerJoinHandlerClass = Class.forName("com.launcher.api.PlayerJoinHandler");
+            java.lang.reflect.Method isFromLauncherMethod = playerJoinHandlerClass.getMethod("isFromLauncher", ServerPlayerEntity.class);
+            boolean result = (Boolean) isFromLauncherMethod.invoke(null, player);
+            AngellaMod.LOGGER.info("Checked launcher flag for {}: {}", player.getName().getString(), result);
+            return result;
+        } catch (ClassNotFoundException e) {
+            // Серверный мод launcherapi не установлен - считаем, что не через лаунчер
+            AngellaMod.LOGGER.debug("Launcher API mod not found, assuming not from launcher");
+            return false;
+        } catch (Exception e) {
+            AngellaMod.LOGGER.warn("Failed to check launcher flag for {}: {}", player.getName().getString(), e.getMessage());
             return false;
         }
     }

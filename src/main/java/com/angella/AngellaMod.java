@@ -2,13 +2,16 @@ package com.angella;
 
 import com.angella.config.AngellaConfig;
 import com.angella.discord.DiscordBot;
+import com.angella.events.ChatEventHandler;
 import com.angella.events.PlayerEventHandler;
+import com.angella.llm.AngellaChatService;
 import com.angella.commands.RebootUpdateCommand;
 import com.angella.commands.VerifCommand;
 import com.angella.commands.VerifDeleteCommand;
 import com.angella.verification.VerificationManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +29,9 @@ public class AngellaMod implements ModInitializer {
         // Load configuration
         config = AngellaConfig.load();
         
+        // Initialize chat LLM (HuggingFace)
+        AngellaChatService.init(config);
+        
         // Initialize Discord bot
         if (config.isEnabled() && config.getBotToken() != null && !config.getBotToken().isEmpty()) {
             try {
@@ -41,6 +47,7 @@ public class AngellaMod implements ModInitializer {
         
         // Register event handlers
         PlayerEventHandler.register();
+        ChatEventHandler.register();
         
         // Load verifications
         VerificationManager.load();
@@ -51,15 +58,12 @@ public class AngellaMod implements ModInitializer {
         VerifDeleteCommand.register();
         
         // Register server lifecycle events
-        ServerLifecycleEvents.SERVER_STARTING.register(server -> {
-            if (discordBot != null) {
-                discordBot.onServerStarting();
-            }
-        });
-        
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             if (discordBot != null) {
                 discordBot.onServerStarted();
+            }
+            if (AngellaChatService.getInstance() != null) {
+                AngellaChatService.getInstance().bindServer(server);
             }
         });
         
@@ -67,11 +71,23 @@ public class AngellaMod implements ModInitializer {
             if (discordBot != null) {
                 discordBot.onServerStopping();
             }
+            if (AngellaChatService.getInstance() != null) {
+                AngellaChatService.getInstance().shutdown();
+            }
         });
         
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
             if (discordBot != null) {
                 discordBot.onServerStopped();
+            }
+            if (AngellaChatService.getInstance() != null) {
+                AngellaChatService.getInstance().shutdown();
+            }
+        });
+
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            if (AngellaChatService.getInstance() != null) {
+                AngellaChatService.getInstance().tick(server);
             }
         });
     }

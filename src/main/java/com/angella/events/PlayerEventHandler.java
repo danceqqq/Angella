@@ -1,12 +1,11 @@
 package com.angella.events;
 
 import com.angella.AngellaMod;
-import com.angella.discord.DiscordBot;
 import com.angella.discord.EmbedBuilder;
-import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
+import com.angella.discord.SkinRestorerIntegration;
+import com.angella.llm.AngellaChatService;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
 
 public class PlayerEventHandler {
     
@@ -16,6 +15,8 @@ public class PlayerEventHandler {
             ServerPlayerEntity player = handler.player;
             if (AngellaMod.getDiscordBot() != null && AngellaMod.getDiscordBot().isReady()) {
                 if (AngellaMod.getConfig().sendPlayerJoin) {
+                    // Clear cached head so a freshly changed skin shows up immediately
+                    SkinRestorerIntegration.clearCache(player.getName().getString());
                     // Delay 10 seconds to allow skin to load and player to spawn
                     server.execute(() -> {
                         try {
@@ -30,6 +31,9 @@ public class PlayerEventHandler {
                         }
                     });
                 }
+            }
+            if (AngellaChatService.getInstance() != null) {
+                AngellaChatService.getInstance().onJoin(player);
             }
         });
         
